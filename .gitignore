@@ -1,0 +1,215 @@
+import java.awt.*;
+import java.applet.*;
+import java.awt.event.*;
+import acm.graphics.*;
+import acm.program.*;
+import acm.util.*;
+
+public class BreakOutGame extends GraphicsProgram{
+	
+	//Setting up constants for everything I'll need
+	private static final int WINDOW_WIDTH = 400;
+	private static final int WINDOW_HEIGHT = 600;
+	private static final int WIDTH = WINDOW_WIDTH;
+	private static final int HEIGHT = WINDOW_HEIGHT;
+	private static int LIVES = 3;
+	private static final int BALL_RADIUS = 5;
+	private static final int NROWS = 10;
+	private static final int NBRICKS_PER_ROW = 10;
+	private static final int PADDLE_WIDTH = 100;
+	private static final int PADDLE_HEIGHT = 15;
+	private static final int BRICK_SPACE = 4;
+	private static final int BRICK_WIDTH =
+			 (WIDTH - (NBRICKS_PER_ROW - 1) * BRICK_SPACE) / NBRICKS_PER_ROW;
+	private static final int STARTING_BRICKS = NROWS * NBRICKS_PER_ROW;
+	private static int BRICKS_REMAINING = STARTING_BRICKS;
+	private final static int BRICK_HEIGHT = 8;
+	private static int Y_OFFSET = 70;
+	
+	
+	
+	//Runs the program
+	public void run(){
+		getMouseMotionListeners();
+		addMouseListeners();
+		setUpBoard();
+		placePaddle();
+		ball();
+		checkForSide();
+		checkForWin();
+		//checkForPaddle();
+		//checkForDeath();
+	}
+	
+	private void setUpBoard(){
+		//Creates the bricks. 10 in each row, 10 rows, 5 different colors.
+		for(int u = 0; u < NROWS; u++){	
+			for(int i = 0; i < NBRICKS_PER_ROW;i++){
+				double X = (BRICK_SPACE * i) + (BRICK_WIDTH * i);
+				GRect brick = new GRect(X,Y_OFFSET,BRICK_WIDTH,BRICK_HEIGHT);
+				brick.setColor(Color.BLACK);
+				brick.setFilled(true);
+				brick.setFillColor(Color.RED);
+				add(brick);
+					if(u > 1 && u <= 3){
+						brick.setFillColor(Color.ORANGE);;
+					}
+					if(u > 3 && u <= 5){
+						brick.setFillColor(Color.YELLOW);
+					}
+					if(u > 5 && u <= 7){
+						brick.setFillColor(Color.GREEN);
+					}
+					if(u > 7 && u <= 9){
+						brick.setFillColor(Color.BLUE);
+					}
+			}
+			Y_OFFSET = Y_OFFSET + BRICK_SPACE + BRICK_HEIGHT;
+		}
+		//not updating while playing
+		GLabel remain = new GLabel ("Bricks remaining: " + BRICKS_REMAINING, 50,50);
+			remain.setFont(new Font("Serif", Font.BOLD, 14));
+			remain.setColor(Color.BLACK);
+		if (BRICKS_REMAINING <= STARTING_BRICKS){
+			add(remain);
+		}
+	}
+	
+	private void ball(){
+		placeBall();
+		waitForClick();
+		ballVelocity();
+		while(true){
+			moveBall();
+		}
+	}
+
+	private void placeBall() {
+		double x = ((getWidth() / 2) - BALL_RADIUS);
+		double y = ((getHeight() / 2) - BALL_RADIUS);
+		ball = new GOval (x, y, BALL_RADIUS * 2, BALL_RADIUS * 2);
+		ball.setFillColor(Color.BLACK);
+		ball.setFilled(true);
+		add(ball);
+	}
+	
+	private void ballVelocity(){
+		VY = 3.0;
+		VX = rgen.nextDouble(1.0,3.0);		
+		if (rgen.nextBoolean(0.5)){
+			VX = -VX;
+		}
+	}
+	
+	public int moveBall(){
+		/* might do lives later.
+		GLabel Lives = new GLabel (("Lives Left: " + LIVES), 100, 15);
+		Lives.setColor(Color.BLACK);	
+		add(Lives);
+		*/
+		ball.move(VX,VY);
+			if ((ball.getX() - VX <= 0 && VX < 0 )|| (ball.getX() + VX >= (getWidth() - BALL_RADIUS*2) && VX>0)) {
+				VX = -VX;
+			}
+			if ((ball.getY() - VY <= 0 && VY < 0 )) {
+				VY = -VY;
+			}
+			pause(8);
+			
+				if(ball.getY() > 600){
+				/* might add lives or maybe just one life, not sure yet.
+				LIVES = LIVES - 1;
+				remove(Lives);
+				add(Lives);
+				*/
+					GLabel over = new GLabel ("GAME OVER", WIDTH / 2, HEIGHT / 2);
+						over.setFont(new Font("Serif", Font.BOLD, 32));
+						over.move(-(over.getWidth() / 2), 0);
+						over.setColor(Color.BLACK);
+					removeAll();
+					add(over);
+					waitForClick();
+					removeAll();
+					// stupid setup..... stop setting up twice after I die!
+					setUpBoard();
+					run();
+					/*	if(LIVES == 0){
+						GLabel GO = new GLabel ("GAME OVER", 5, 15);
+						GO.setColor(Color.BLACK);
+						add(GO);
+					}  */
+				}
+				getCollidingObject();
+				GObject collider = getCollidingObject();
+				if (collider == paddle){
+					VY = -VY;
+				}
+					else if (collider != null){
+						remove(collider);
+						VY = -VY;
+						BRICKS_REMAINING--;
+					}
+				return BRICKS_REMAINING;
+	}
+	
+	private void placePaddle(){
+		double x = (getWidth() / 2) - (PADDLE_WIDTH / 2);
+		double y = (5 * (getHeight() / 6));
+		paddle = new GRect (x, y, PADDLE_WIDTH, PADDLE_HEIGHT);
+		paddle.setFillColor(Color.BLACK);
+		paddle.setFilled(true);
+		add(paddle);
+		
+	}
+	
+	private GObject getCollidingObject() {
+		
+		if((getElementAt(ball.getX(), ball.getY())) != null) {
+	         return getElementAt(ball.getX(), ball.getY());
+	      }
+		else if (getElementAt( (ball.getX() + BALL_RADIUS*2), ball.getY()) != null ){
+	         return getElementAt(ball.getX() + BALL_RADIUS*2, ball.getY());
+	      }
+		else if(getElementAt(ball.getX(), (ball.getY() + BALL_RADIUS*2)) != null ){
+	         return getElementAt(ball.getX(), ball.getY() + BALL_RADIUS*2);
+	      }
+		else if(getElementAt((ball.getX() + BALL_RADIUS*2), (ball.getY() + BALL_RADIUS*2)) != null ){
+	         return getElementAt(ball.getX() + BALL_RADIUS*2, ball.getY() + BALL_RADIUS*2);
+	      }
+		else{
+	         return null;
+	      }
+		
+	}
+	
+	private void checkForSide(){
+		if(ball.getY() < 0 || ball.getY() > HEIGHT){
+			VY = -VY;
+		}
+		if(ball.getX() < 0 || ball.getX() > WIDTH){
+			VX = -VX;
+		}
+	}
+	
+	private void checkForWin(){
+		if (BRICKS_REMAINING == 0){
+			GLabel win = new GLabel ("YOU WIN!", WIDTH / 2, HEIGHT / 2);
+				win.setFont(new Font("Serif", Font.BOLD, 32));
+				win.move(-(win.getWidth() / 2), 0);
+				win.setColor(Color.BLACK);
+			removeAll();
+			add(win);
+		}
+	}
+	
+	public void mouseMoved(MouseEvent e) {
+		if ((e.getX() < getWidth() - PADDLE_WIDTH/2) && (e.getX() > PADDLE_WIDTH/2)) {
+			paddle.setLocation(e.getX() - PADDLE_WIDTH/2, (5 * (getHeight() / 6)));
+		}
+	}
+	
+	private RandomGenerator rgen = RandomGenerator.getInstance();
+	private double VX, VY;
+	private GOval ball;
+	private GRect paddle;
+}
